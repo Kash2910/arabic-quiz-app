@@ -3,16 +3,29 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Panel - Arabic Test</title>
+  <title>Admin Panel - Arabic Quiz</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Socket.io CDN -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Custom Font Setup for IndoPak Asia -->
+  <style>
+    @font-face {
+      font-family: 'IndoPakAsia';
+      src: url('fonts/IndoPakAsia-Regular.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    .font-indo {
+      font-family: 'IndoPakAsia', sans-serif;
+    }
+  </style>
   <script>
-    const socket = io("http://localhost:3000");
+    const socket = io();
 
     async function postWords() {
       const wordsInput = document.getElementById("words").value;
+      // Split words by commas, trim extra spaces, and remove empty strings.
       const wordsArray = wordsInput.split(",").map(word => word.trim()).filter(Boolean);
 
       if (wordsArray.length === 0) {
@@ -20,7 +33,7 @@
         return;
       }
 
-      await fetch("http://localhost:3000/post-words", {
+      await fetch("/post-words", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ words: wordsArray })
@@ -30,30 +43,28 @@
     }
 
     async function clearTest() {
-      await fetch("http://localhost:3000/clear", { method: "POST" });
+      await fetch("/clear", { method: "POST" });
       alert("Test cleared!");
       document.getElementById("resultsContainer").innerHTML = "";
     }
 
     async function fetchResults() {
-      let response = await fetch("http://localhost:3000/get-results");
-      let data = await response.json();
+      const res = await fetch("/get-results");
+      const data = await res.json();
 
-      let responseWords = await fetch("http://localhost:3000/get-words");
-      let wordData = await responseWords.json();
+      const wordsRes = await fetch("/get-words");
+      const wordData = await wordsRes.json();
+      const words = wordData.words || [];
 
-      let words = wordData.words || [];
-      let resultsContainer = document.getElementById("resultsContainer");
+      const resultsContainer = document.getElementById("resultsContainer");
       resultsContainer.innerHTML = ""; // Clear previous results
 
-      for (let user in data) {
-        let userAnswers = data[user] || [];
-
-        // Create a separate section for each user
-        let userSection = document.createElement("div");
+      // Loop through each user and create a separate table
+      for (const user in data) {
+        const userAnswers = data[user] || [];
+        // Create user section
+        const userSection = document.createElement("div");
         userSection.className = "bg-white bg-opacity-90 p-4 rounded-lg shadow-md mt-6 w-full";
-        
-        // Display the user's name at the top
         userSection.innerHTML = `
           <h3 class="text-xl font-bold text-gray-800 mb-2">${user}'s Results</h3>
           <table class="w-full border-collapse border border-gray-300">
@@ -66,14 +77,13 @@
             <tbody id="table-${user}"></tbody>
           </table>
         `;
-
         resultsContainer.appendChild(userSection);
-        let userTable = document.getElementById(`table-${user}`);
 
-        // Map each Arabic word to the corresponding answer
+        const userTable = document.getElementById(`table-${user}`);
         words.forEach((word, index) => {
-          let userAnswer = userAnswers.length > index ? userAnswers[index] : "-";
-          let row = `
+          // Map answer from userAnswers array; if missing, display "-"
+          const userAnswer = userAnswers.length > index ? userAnswers[index] : "-";
+          const row = `
             <tr>
               <td class="border border-gray-400 px-4 py-2 text-right text-2xl font-bold text-blue-600 font-indo">${word}</td>
               <td class="border border-gray-400 px-4 py-2">${userAnswer}</td>
@@ -84,42 +94,24 @@
       }
     }
 
-    // Optional: Listen for real-time updates (if needed)
+    // Optional: Listen for new words or test clear events via Socket.io.
     socket.on("newWords", (words) => {
       console.log("New words posted:", words);
     });
-
     socket.on("testCleared", () => {
       document.getElementById("resultsContainer").innerHTML = "";
     });
   </script>
-  <!-- Optional: Custom Font via Tailwind config or inline CSS -->
-  <style>
-    @font-face {
-      font-family: 'IndoPakAsia';
-      src: url('fonts/IndoPakAsia-Regular.ttf') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-    }
-    .font-indo {
-      font-family: 'IndoPakAsia', sans-serif;
-    }
-  </style>
 </head>
 <body class="bg-cover bg-center" style="background-image: url('https://source.unsplash.com/featured/?arabic,calligraphy');">
   <div class="bg-white bg-opacity-90 p-6 rounded-lg shadow-lg text-center w-full max-w-md mx-4 my-8">
     <h1 class="text-3xl font-bold mb-4 text-gray-800">Admin Panel</h1>
-    
     <textarea id="words" class="w-full p-3 border rounded-lg" placeholder="Enter Arabic words, separated by commas"></textarea>
-    
-    <!-- Responsive buttons: vertical stack on small screens, horizontal on larger screens -->
     <div class="flex flex-col sm:flex-row justify-center gap-4 mt-4">
       <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg" onclick="postWords()">Post Words</button>
       <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg" onclick="clearTest()">Clear Test</button>
       <button class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg" onclick="fetchResults()">Show Results</button>
     </div>
-
-    <!-- Container to display results -->
     <div id="resultsContainer" class="mt-6"></div>
   </div>
 </body>

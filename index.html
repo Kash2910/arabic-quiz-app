@@ -8,6 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Socket.io CDN -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- Custom Font for Arabic -->
   <style>
     @font-face {
       font-family: 'IndoPakAsia';
@@ -20,10 +21,8 @@
     }
   </style>
   <script>
-    // Connect to the backend Socket.io server
-    const socket = io("http://localhost:3000");
+    const socket = io();
 
-    // Display Arabic words with an input for each answer (only answer inputs get class 'answer-input')
     function displayWords(words) {
       document.getElementById("words").innerHTML = words.map(word => 
         `<label class="block my-2">
@@ -33,16 +32,14 @@
       ).join("");
     }
 
-    // Fetch words from the backend
     async function fetchWords() {
-      const response = await fetch("http://localhost:3000/get-words");
+      const response = await fetch("/get-words");
       const data = await response.json();
       displayWords(data.words);
     }
 
-    // Submit the user's answers to the backend
     async function submitAnswer() {
-      // Select only the answer inputs (exclude the username field)
+      // Only select inputs with class "answer-input" to avoid username field.
       const answerInputs = document.querySelectorAll("input.answer-input");
       const answers = Array.from(answerInputs).map(input => input.value);
       const username = document.getElementById("username").value.trim();
@@ -50,7 +47,7 @@
         alert("Please enter a username!");
         return;
       }
-      await fetch("http://localhost:3000/submit-answer", {
+      await fetch("/submit-answer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, userAnswers: answers })
@@ -58,8 +55,7 @@
       alert("Answers submitted!");
     }
 
-    // Update words in real time if new words are posted
-    socket.on("newWords", words => {
+    socket.on("newWords", (words) => {
       displayWords(words);
     });
 
