@@ -2,15 +2,27 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
 import { fileURLToPath } from 'url';
 
 const app = express();
+const server = createServer(app);
+
+const io = new Server(server, {
+    cors: {
+      origin: "*",  // Allow all origins for testing; tighten this in production
+      methods: ["GET", "POST"]
+    }
+  });
 
 // Setup __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Middleware
+app.use(cors());
 app.use(bodyParser.json());
 
 // Serve static files from the root folder
@@ -86,6 +98,15 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).send("Something went wrong");
 });
+
+io.on("connection", (socket) => {
+    console.log("A user connected:", socket.id);
+    // Optionally send current words on connection
+    socket.emit("newWords", words);
+    socket.on("disconnect", () => {
+      console.log("User disconnected:", socket.id);
+    });
+  });
 
 const PORT = process.env.PORT || 2000;
 app.listen(PORT, () => {

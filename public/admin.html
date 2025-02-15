@@ -20,8 +20,20 @@
       font-family: 'IndoPakAsia', sans-serif;
     }
   </style>
+  
   <script>
-    const socket = io();
+    const socket = io("https://arabic-quiz-app.onrender.com", {
+    transports: ["websocket", "polling"]
+  });
+
+  socket.on("connect", () => {
+    console.log("Connected with socket id:", socket.id);
+  });
+
+  socket.on("newWords", (words) => {
+    console.log("Received new words:", words);
+    // Update the UI accordingly...
+  });
 
     async function postWords() {
       const wordsInput = document.getElementById("words").value;

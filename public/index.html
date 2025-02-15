@@ -21,7 +21,15 @@
     }
   </style>
   <script>
-    const socket = io();
+    const socket = io("https://arabic-quiz-app.onrender.com", {
+    transports: ["websocket", "polling"]
+  });
+
+  socket.on("connect", () => {
+    console.log("Connected with socket id:", socket.id);
+  });
+
+  
 
     function displayWords(words) {
       document.getElementById("words").innerHTML = words.map(word => 
