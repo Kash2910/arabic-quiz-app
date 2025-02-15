@@ -1,114 +1,74 @@
 import express from 'express';
-import bodyParser from 'body-parser';
-import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { fileURLToPath } from 'url';
 
 const app = express();
 const server = createServer(app);
 
+// Configure CORS for Socket.IO
 const io = new Server(server, {
-    cors: {
-      origin: "*",  // Allow all origins for testing; tighten this in production
-      methods: ["GET", "POST"]
-    }
-  });
-
-// Setup __dirname for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+  cors: {
+    origin: "*", // Allow all origins for testing; tighten this in production
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'], // Explicitly specify transports
+});
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
 
-// Serve static files from the root folder
-app.use(express.static(__dirname + '/public'));
+// Global variables to hold quiz data (no database)
+global.words = [];    // Array of Arabic words
+global.answers = {};  // Object to store user answers keyed by username
 
-let users = [];
-
-// POST: Create a new user
-app.post('/users', (req, res, next) => {
-  try {
-    const { fName, lName, age } = req.body;
-    const newUser = { id: uuidv4(), fName, lName, age };
-    users.push(newUser);
-    res.status(201).json(newUser);
-  } catch (err) {
-    next(err);
-  }
+// POST: Admin posts words
+app.post('/post-words', (req, res) => {
+  const { words } = req.body;
+  global.words = words;
+  global.answers = {}; // Reset any previous answers
+  io.emit("newWords", words); // Notify all connected clients
+  res.json({ message: "Words posted successfully" });
 });
 
-// GET: Retrieve all users
-app.get('/users', (req, res, next) => {
-  try {
-    res.status(200).json(users);
-  } catch (err) {
-    next(err);
-  }
+// GET: Retrieve posted words
+app.get('/get-words', (req, res) => {
+  res.json({ words: global.words });
 });
 
-// GET: Retrieve a specific user
-app.get('/users/:id', (req, res, next) => {
-  try {
-    const user = users.find(u => u.id === req.params.id);
-    if (!user) {
-      return res.status(404).send("User not found");
-    }
-    res.status(200).json(user);
-  } catch (err) {
-    next(err);
-  }
+// POST: User submits their answers
+app.post('/submit-answer', (req, res) => {
+  const { username, userAnswers } = req.body;
+  global.answers[username] = userAnswers;
+  io.emit("newAnswer", { username, userAnswers });
+  res.json({ message: "Answers submitted" });
 });
 
-// PUT: Update a user
-app.put('/users/:id', (req, res, next) => {
-  try {
-    const { fName, lName, age } = req.body;
-    const userIndex = users.findIndex(user => user.id === req.params.id);
-    if (userIndex === -1) {
-      return res.status(404).send("User not found");
-    }
-    users[userIndex] = { id: req.params.id, fName, lName, age };
-    res.status(200).json(users[userIndex]);
-  } catch (err) {
-    next(err);
-  }
+// GET: Retrieve results (for admin review)
+app.get('/get-results', (req, res) => {
+  res.json(global.answers);
 });
 
-// DELETE: Remove a user
-app.delete('/users/:id', (req, res, next) => {
-  try {
-    const userIndex = users.findIndex(user => user.id === req.params.id);
-    if (userIndex === -1) {
-      return res.status(404).send("User not found");
-    }
-    users.splice(userIndex, 1);
-    res.status(200).send("User deleted");
-  } catch (err) {
-    next(err);
-  }
+// POST: Clear the test session
+app.post('/clear', (req, res) => {
+  global.words = [];
+  global.answers = {};
+  io.emit("testCleared");
+  res.json({ message: "Test cleared" });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).send("Something went wrong");
-});
-
+// Socket.io connection
 io.on("connection", (socket) => {
-    console.log("A user connected:", socket.id);
-    // Optionally send current words on connection
-    socket.emit("newWords", words);
-    socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id);
-    });
+  console.log("A user connected:", socket.id);
+  // Send current words when a client connects
+  socket.emit("newWords", global.words);
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
   });
+});
 
 const PORT = process.env.PORT || 2000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

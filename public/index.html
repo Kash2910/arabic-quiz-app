@@ -12,7 +12,7 @@
   <style>
     @font-face {
       font-family: 'IndoPakAsia';
-      src: url('fonts/IndoPakAsia-Regular.ttf') format('truetype');
+      src: url('/fonts/AlQuran-IndoPak.ttf') format('truetype');
       font-weight: normal;
       font-style: normal;
     }
@@ -22,14 +22,17 @@
   </style>
   <script>
     const socket = io("https://arabic-quiz-app.onrender.com", {
-    transports: ["websocket", "polling"]
-  });
+      transports: ["websocket", "polling"]
+    });
 
-  socket.on("connect", () => {
-    console.log("Connected with socket id:", socket.id);
-  });
+    socket.on("connect", () => {
+      console.log("Connected to server with socket id:", socket.id);
+    });
 
-  
+    socket.on("connect_error", (err) => {
+      console.error("Connection error:", err);
+      alert("Failed to connect to the server. Please refresh the page.");
+    });
 
     function displayWords(words) {
       document.getElementById("words").innerHTML = words.map(word => 
@@ -47,7 +50,6 @@
     }
 
     async function submitAnswer() {
-      // Only select inputs with class "answer-input" to avoid username field.
       const answerInputs = document.querySelectorAll("input.answer-input");
       const answers = Array.from(answerInputs).map(input => input.value);
       const username = document.getElementById("username").value.trim();
@@ -64,7 +66,13 @@
     }
 
     socket.on("newWords", (words) => {
+      console.log("New words received:", words);
       displayWords(words);
+    });
+
+    socket.on("testCleared", () => {
+      console.log("Test cleared");
+      document.getElementById("words").innerHTML = "";
     });
 
     window.onload = fetchWords;
