@@ -14,7 +14,7 @@ const __dirname = path.dirname(__filename);
 app.use(bodyParser.json());
 
 // Serve static files from the root folder
-app.use(express.static(__dirname));
+app.use(express.static(__dirname + '/public'));
 
 let users = [];
 
