@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arabic Word Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const socket = io("http://localhost:3000");
+
+        // Display the words with answer inputs having a specific class "answer-input"
+        function displayWords(words) {
+            document.getElementById("words").innerHTML = words.map(word => 
+                `<label class="block my-2">${word}: 
+                    <input type="text" class="border p-1 rounded w-full answer-input" placeholder="Enter your answer">
+                 </label>`).join("");
+        }
+
+        async function fetchWords() {
+            let response = await fetch("http://localhost:3000/get-words");
+            let data = await response.json();
+            displayWords(data.words);
+        }
+
+        async function submitAnswer() {
+            // Only select input fields for answers (exclude the username field)
+            let answerInputs = document.querySelectorAll("input.answer-input");
+            let answers = Array.from(answerInputs).map(input => input.value);
+            let username = document.getElementById("username").value.trim();
+            if (!username) {
+                alert("Enter a username!");
+                return;
+            }
+            await fetch("http://localhost:3000/submit-answer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, userAnswers: answers })
+            });
+            alert("Answers submitted!");
+        }
+
+        socket.on("newWords", (words) => {
+            displayWords(words);
+        });
+
+        socket.on("testCleared", () => {
+            document.getElementById("words").innerHTML = "<p class='text-red-500'>Test has been cleared.</p>";
+            document.getElementById("results").innerHTML = "";
+        });
+
+        window.onload = fetchWords;
+    </script>
+    <style>
+        @font-face {
+          font-family: 'IndoPakAsia';
+          src: url('./fonts/IndoPakAsia-Regular.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+        }
+      
+        /* Apply this font for Arabic text */
+        .arabic-text {
+          font-family: 'IndoPakAsia', sans-serif;
+        }
+      </style>
+</head>
+<body class="bg-zinc-500 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center w-1/2">
+        <h1 class="text-3xl font-bold mb-4 text-blue-800">Arabic Word Test</h1>
+        <label class="block my-2">
+            Username: 
+            <input type="text" id="username" class="border p-1 rounded w-full" placeholder="Enter your name">
+        </label>
+        <div id="words" class="arabic-text"></div>
+        <button class="bg-blue-500 text-white px-4 py-2 rounded mt-4" onclick="submitAnswer()">Submit Answers</button>
+    </div>
+</body>
+</html>
